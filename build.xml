@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="app" default="validate">
+    <property name="php_version" value="7.2"/>
+    <property name="phpqa.config_dir" value="./"/>
+    <property name="basedir" value="./"/>
+    <property name="phpunit" value="${basedir}/vendor/bin/phpunit"/>
+    <property environment="dev"/>
+
+    <import file="${basedir}/vendor/randock/build/build.base.xml"/>
+
+    <target name="ci-prepare"
+            depends="symfony4-webpack:build:prod,prepare,phpunit-prepare,symfony-prepare" />
+
+    <target name = "dump:js" depends="translation:dump,fos:js-routing:dump" />
+
+    <target name ="translation:dump"
+            depends="symfony4-check"
+            if="symfony4.available">
+        <exec executable="${symfony4-console}">
+            <arg value="bazinga:js-translation:dump" />
+            <arg value="--merge-domains" />
+            <arg value="--format" />
+            <arg value="json" />
+            <arg value="public/js" />
+        </exec>
+    </target>
+
+    <target name ="fos:js-routing:dump"
+            depends="symfony4-check"
+            if="symfony4.available">
+        <exec executable="${symfony4-console}">
+            <arg value="fos:js-routing:dump" />
+            <arg value="--format" />
+            <arg value="json" />
+            <arg value="--target" />
+            <arg value="public/js/fos_js_routes.json" />
+        </exec>
+    </target>
+
+    <target name ="translation:download"
+            depends="symfony4-check"
+            if="symfony4.available">
+        <exec executable="${symfony4-console}">
+            <arg value="translation:download" />
+        </exec>
+    </target>
+
+    <target name="symfony4-cache:clear">
+        <exec executable="${symfony4-console}">
+            <arg value="cache:clear" />
+        </exec>
+    </target>
+
+    <target name="build" depends="translation:download,symfony4-cache:clear,fos:js-routing:dump,translation:dump,symfony4-webpack:build" />
+</project>

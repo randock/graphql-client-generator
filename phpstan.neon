@@ -1,0 +1,13 @@
+parameters:
+    bootstrap: %currentWorkingDirectory%/vendor/autoload.php
+    autoload_directories:
+        - %currentWorkingDirectory%/src
+    excludes_analyse:
+        - %currentWorkingDirectory%/bin
+        - %currentWorkingDirectory%/build
+        - %currentWorkingDirectory%/config
+        - %currentWorkingDirectory%/etc
+        - %currentWorkingDirectory%/public
+        - %currentWorkingDirectory%/translations
+        - %currentWorkingDirectory%/var
+        - %currentWorkingDirectory%/vendor

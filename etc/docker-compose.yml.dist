@@ -1,0 +1,7 @@
+version: '2'
+services:
+  fpm:
+    build: etc/docker/development/fpm
+    volumes:
+      - "$PWD:/app"
+    working_dir: /app
