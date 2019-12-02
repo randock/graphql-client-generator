@@ -65,7 +65,7 @@ abstract class ApiClient
     }
 
     /**
-     * @param $input
+     * @param mixed $input
      *
      * @return array
      */

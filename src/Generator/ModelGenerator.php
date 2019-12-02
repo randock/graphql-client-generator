@@ -62,10 +62,6 @@ class ModelGenerator
         while (null !== $typeArray['ofType']) {
             $typeWrappers[] = $typeArray['kind'];
             $typeArray = $typeArray['ofType'];
-            // Throw exception if next array doesn't have ofType key
-            if (!\array_key_exists('ofType', $typeArray)) {
-                throw new RuntimeException('Reached the limit of nesting in type info');
-            }
         }
         $typeInfo = [$typeArray['name'], $typeArray['kind'], $typeWrappers];
 
@@ -494,6 +490,14 @@ GRAPHQL;
                             $returnType = 'bool';
                             $doc = 'bool';
                             break;
+                        case 'SimpleObject':
+                            $returnType = 'object';
+                            $doc = 'object';
+                            break;
+                        case 'Iterable':
+                            $returnType = 'iterable';
+                            $doc = 'iterable';
+                            break;
                     }
                     break;
                 case 'ENUM':
@@ -608,7 +612,6 @@ GRAPHQL;
                 if ($field['array']) {
                     $body .= \sprintf(
                         "\n" . '$array = [];' . "\n" . 'foreach($data[\'%s\'] as $item) {' . "\n",
-                        $field['name'],
                         $field['name']
                     );
                     $body .= \sprintf(
