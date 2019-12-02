@@ -94,13 +94,19 @@ class ModelGenerator
             $args = $this->convertFields($field['args']);
 
             // add fields argument
-            $method->addParameter('fields')->setTypeHint('array');
+            $method->addParameter('fields')->setType('array');
             $method->addComment('@param array $fields');
 
             foreach ($args as $arg) {
                 $parameter = $method->addParameter($arg['name']);
                 $parameter->setNullable($arg['nullable']);
-                $parameter->setTypeHint(
+
+                // if nullable, set default value (empty array in case of array or null)
+                if (true === $arg['nullable']) {
+                    $parameter->setDefaultValue('array' === $arg['returnType'] ? [] : null);
+                }
+
+                $parameter->setType(
                     $classmap[$arg['returnType']] ?? $arg['returnType']
                 );
 
@@ -565,7 +571,7 @@ GRAPHQL;
             }
 
             $parameter = new Parameter($field['name']);
-            $parameter->setTypeHint($returnType);
+            $parameter->setType($returnType);
             $parameter->setNullable($field['nullable']);
             $parameters[] = $parameter;
 
@@ -602,7 +608,7 @@ GRAPHQL;
 
         $method->setParameters(
             [
-                (new Parameter('data'))->setTypeHint('array'),
+                (new Parameter('data'))->setType('array'),
             ]
         );
 
@@ -611,7 +617,7 @@ GRAPHQL;
             if ('OBJECT' === $field['type']) {
                 if ($field['array']) {
                     $body .= \sprintf(
-                        "\n" . '$array = [];' . "\n" . 'foreach($data[\'%s\'] as $item) {' . "\n",
+                        "\n" . 'if(isset($data[\'%1$s\'])) {' . "\n" . '$array = [];' . "\n" . 'foreach($data[\'%1$s\'] as $item) {' . "\n",
                         $field['name']
                     );
                     $body .= \sprintf(
@@ -620,7 +626,7 @@ GRAPHQL;
                     ) . "\n";
                     $body .= "}\n";
                     $body .= \sprintf(
-                        '$data[\'%s\'] = $array;',
+                        '$data[\'%s\'] = $array;' . "\n}",
                         $field['name']
                     );
                     $body .= "\n";
