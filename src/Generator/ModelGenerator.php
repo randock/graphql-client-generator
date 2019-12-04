@@ -57,15 +57,21 @@ class ModelGenerator
      */
     protected function getTypeInfo(array $dataArray): array
     {
-        $typeArray = $dataArray['type'];
         $typeWrappers = [];
-        while (null !== $typeArray['ofType']) {
-            $typeWrappers[] = $typeArray['kind'];
-            $typeArray = $typeArray['ofType'];
-        }
-        $typeInfo = [$typeArray['name'], $typeArray['kind'], $typeWrappers];
 
-        return $typeInfo;
+        $type = $dataArray['type'];
+        while (isset($type['ofType'])) {
+            $typeWrappers[] = $type['kind'];
+            $type = $type['ofType'];
+        }
+
+        return [
+            'field' => $dataArray['name'],
+            'nullable' => 'NON_NULL' !== $dataArray['type']['kind'],
+            'array' => \in_array('LIST', $typeWrappers),
+            'kind' => $type['kind'],
+            'name' => $type['name'],
+        ];
     }
 
     private function generateQuery(string $baseNamespace, array $classmap, string $baseDir)
@@ -146,7 +152,7 @@ GRAPHQL;
                 $return .= \sprintf(
                     "\n\n" .
                     'return array_map(function(array $item) {' . "\n"
-                        . "\t" . 'return %s::fromArray($item);' . "\n"
+                    . "\t" . 'return %s::fromArray($item);' . "\n"
                     . '}, $data);',
                     $convertedField['kind']
                 );
@@ -463,17 +469,14 @@ GRAPHQL;
     {
         $fields = [];
         foreach ($schemaFields as $field) {
-            $name = $field['name'];
-            $nullable = 'NON_NULL' !== $field['type']['kind'];
-
-            [$typeName, $typeKind] = $this->getTypeInfo($field);
+            $typeInfo = $this->getTypeInfo($field);
 
             $returnType = null;
             $doc = null;
 
-            switch ($typeKind) {
+            switch ($typeInfo['kind']) {
                 case 'SCALAR':
-                    switch ($typeName) {
+                    switch ($typeInfo['name']) {
                         case 'ID':
                         case 'String':
                             $returnType = 'string';
@@ -507,29 +510,29 @@ GRAPHQL;
                     }
                     break;
                 case 'ENUM':
-                    $returnType = $typeName;
-                    $doc = $typeName;
+                    $returnType = $typeInfo['name'];
+                    $doc = $typeInfo['name'];
                     break;
                 case 'OBJECT':
                 case 'INPUT_OBJECT':
-                    if ('LIST' === $field['type']['kind']) {
+                    if ($typeInfo['array']) {
                         $returnType = 'array';
-                        $doc = $typeName . '[]';
+                        $doc = $typeInfo['name'] . '[]';
                     } else {
-                        $returnType = $typeName;
-                        $doc = $typeName;
+                        $returnType = $typeInfo['name'];
+                        $doc = $typeInfo['name'];
                     }
                     break;
             }
 
             $fields[] = [
-                'array' => 'LIST' === $field['type']['kind'],
-                'type' => $typeKind,
-                'nullable' => $nullable,
-                'name' => $field['name'],
+                'array' => $typeInfo['array'],
+                'type' => $typeInfo['kind'],
+                'nullable' => $typeInfo['nullable'],
+                'name' => $typeInfo['field'],
                 'returnType' => $returnType,
                 'doc' => $doc,
-                'kind' => $typeName,
+                'kind' => $typeInfo['name'],
             ];
         }
 
@@ -621,9 +624,9 @@ GRAPHQL;
                         $field['name']
                     );
                     $body .= \sprintf(
-                        '    $array[] = %s::fromArray($item);',
-                        $field['kind']
-                    ) . "\n";
+                            '    $array[] = %s::fromArray($item);',
+                            $field['kind']
+                        ) . "\n";
                     $body .= "}\n";
                     $body .= \sprintf(
                         '$data[\'%s\'] = $array;' . "\n}",
@@ -632,12 +635,12 @@ GRAPHQL;
                     $body .= "\n";
                 } else {
                     $body .= \sprintf(
-                        '$data[\'%s\'] = isset($data[\'%s\']) ? %s::fromArray($data[\'%s\']) : null;',
-                        $field['name'],
-                        $field['name'],
-                        $field['kind'],
-                        $field['name']
-                    ) . "\n";
+                            '$data[\'%s\'] = isset($data[\'%s\']) ? %s::fromArray($data[\'%s\']) : null;',
+                            $field['name'],
+                            $field['name'],
+                            $field['kind'],
+                            $field['name']
+                        ) . "\n";
                 }
             }
         }
@@ -704,19 +707,19 @@ CODE;
                 );
                 break;
             default:
-            $body = <<<'CODE'
+                $body = <<<'CODE'
 /** @var %s $value */
 $value = $this->_getField('%s', %s);
 
 return $value;
 CODE;
-            $body = \sprintf(
-                $body,
-                $doc,
-                $name,
-                ($nullable ? 'true' : 'false')
-            );
-            break;
+                $body = \sprintf(
+                    $body,
+                    $doc,
+                    $name,
+                    ($nullable ? 'true' : 'false')
+                );
+                break;
         }
 
         $method->setBody(
