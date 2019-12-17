@@ -28,6 +28,11 @@ class ModelGenerator
     private $introspector;
 
     /**
+     * @var array
+     */
+    private $interfaces;
+
+    /**
      * ModelGenerator constructor.
      *
      * @param Client             $graphqlClient
@@ -44,6 +49,9 @@ class ModelGenerator
         $classmap = $this->getClassmap($namespace);
 
         $this->generateQuery($namespace, $classmap, $baseDir);
+
+        $this->generateUnions($namespace, $classmap, $baseDir);
+        $this->generateInterfaces($namespace, $classmap, $baseDir);
 
         $this->generateModels($namespace, $classmap, $baseDir);
         $this->generateEnums($namespace, $classmap, $baseDir);
@@ -322,6 +330,20 @@ GRAPHQL;
                 $object
             );
         }
+        foreach ($this->introspector->getTypes('UNION') as $object) {
+            $map[$object] = \sprintf(
+                '%s\Object\Union\%s',
+                $namespace,
+                $object
+            );
+        }
+        foreach ($this->introspector->getTypes('INTERFACE') as $object) {
+            $map[$object] = \sprintf(
+                '%s\Object\Interfaces\%s',
+                $namespace,
+                $object
+            );
+        }
         foreach ($this->introspector->getTypes('INPUT_OBJECT') as $object) {
             $map[$object] = \sprintf(
                 '%s\Object\Input\%s',
@@ -377,6 +399,84 @@ GRAPHQL;
         }
     }
 
+    private function generateUnions(string $baseNamespace, array $classmap, string $baseDir)
+    {
+        $printer = new PsrPrinter();
+        foreach ($this->introspector->getTypes('UNION') as $object) {
+            $modelNamespace = \sprintf(
+                '%s\Object\Union',
+                $baseNamespace
+            );
+
+            $unionInfo = $this->introspector->getUnionOrInterface($object);
+            foreach ($unionInfo['possibleTypes'] as $possibleType) {
+                $this->interfaces[$possibleType['name']][] = $unionInfo['name'];
+            }
+
+            $class = $this->generateInterface(
+                $object,
+                $baseNamespace,
+                $classmap
+            );
+
+            $file = new PhpFile();
+            $file->setStrictTypes(true);
+
+            $namespace = $file->addNamespace(
+                $modelNamespace
+            );
+            $namespace->add($class);
+
+            \file_put_contents(
+                \sprintf(
+                    '%s/Object/Union/%s.php',
+                    $baseDir,
+                    $object
+                ),
+                $printer->printFile($file)
+            );
+        }
+    }
+
+    private function generateInterfaces(string $baseNamespace, array $classmap, string $baseDir)
+    {
+        $printer = new PsrPrinter();
+        foreach ($this->introspector->getTypes('INTERFACE') as $object) {
+            $modelNamespace = \sprintf(
+                '%s\Object\Interfaces',
+                $baseNamespace
+            );
+
+            $unionInfo = $this->introspector->getUnionOrInterface($object);
+            foreach ($unionInfo['possibleTypes'] as $possibleType) {
+                $this->interfaces[$possibleType['name']][] = $unionInfo['name'];
+            }
+
+            $class = $this->generateInterface(
+                $object,
+                $baseNamespace,
+                $classmap
+            );
+
+            $file = new PhpFile();
+            $file->setStrictTypes(true);
+
+            $namespace = $file->addNamespace(
+                $modelNamespace
+            );
+            $namespace->add($class);
+
+            \file_put_contents(
+                \sprintf(
+                    '%s/Object/Interfaces/%s.php',
+                    $baseDir,
+                    $object
+                ),
+                $printer->printFile($file)
+            );
+        }
+    }
+
     private function generateModelClass(
         string $object,
         array $classmap
@@ -384,6 +484,13 @@ GRAPHQL;
         $imports = [];
         $class = new ClassType($object);
         $class->addExtend(AbstractModel::class);
+
+        if (isset($this->interfaces[$object])) {
+            foreach ($this->interfaces[$object] as $interface) {
+                $class->addImplement($classmap[$interface]);
+                $imports[] = $classmap[$interface];
+            }
+        }
 
         $fieldData = $this->introspector->getObject($object);
         $fields = $fieldData['fields'];
@@ -499,7 +606,7 @@ GRAPHQL;
                             $returnType = 'bool';
                             $doc = 'bool';
                             break;
-                        case 'SimpleObject':
+                        case 'JSONObject':
                             $returnType = 'object';
                             $doc = 'object';
                             break;
@@ -514,6 +621,7 @@ GRAPHQL;
                     $doc = $typeInfo['name'];
                     break;
                 case 'OBJECT':
+                case 'UNION':
                 case 'INPUT_OBJECT':
                     if ($typeInfo['array']) {
                         $returnType = 'array';
@@ -539,7 +647,7 @@ GRAPHQL;
         return $fields;
     }
 
-    private function generateEnumClass(string $object, string $namesapce, array $classmap): ClassType
+    private function generateEnumClass(string $object, string $namespace, array $classmap): ClassType
     {
         $enum = $this->introspector->getEnumObject($object);
 
@@ -552,6 +660,14 @@ GRAPHQL;
         }
 
         $class->addExtend(AbstractEnum::class);
+
+        return $class;
+    }
+
+    private function generateInterface(string $object, string $namespace, array $classmap): ClassType
+    {
+        $class = new ClassType($object);
+        $class->setType(ClassType::TYPE_INTERFACE);
 
         return $class;
     }
