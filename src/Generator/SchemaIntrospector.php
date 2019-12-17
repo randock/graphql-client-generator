@@ -95,6 +95,31 @@ GRAPHQL;
         return $response->getData()['__type'];
     }
 
+    public function getUnionOrInterface(string $class)
+    {
+        $query = <<<'GRAPHQL'
+{
+ __type(name: "%s") {
+    name
+    kind
+    possibleTypes {
+        name
+        kind
+    }
+  }
+}
+GRAPHQL;
+
+        $response = $this->graphqlClient->query(
+            \sprintf(
+                $query,
+                $class
+            )
+        );
+
+        return $response->getData()['__type'];
+    }
+
     /**
      * @param string $objectName
      *
