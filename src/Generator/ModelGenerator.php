@@ -408,12 +408,7 @@ GRAPHQL;
                 $baseNamespace
             );
 
-            $unionInfo = $this->introspector->getUnionOrInterface($object);
-            foreach ($unionInfo['possibleTypes'] as $possibleType) {
-                $this->interfaces[$possibleType['name']][] = $unionInfo['name'];
-            }
-
-            $class = $this->generateInterface(
+            [$class, $imports] = $this->generateInterface(
                 $object,
                 $baseNamespace,
                 $classmap
@@ -447,12 +442,7 @@ GRAPHQL;
                 $baseNamespace
             );
 
-            $unionInfo = $this->introspector->getUnionOrInterface($object);
-            foreach ($unionInfo['possibleTypes'] as $possibleType) {
-                $this->interfaces[$possibleType['name']][] = $unionInfo['name'];
-            }
-
-            $class = $this->generateInterface(
+            [$class, $imports] = $this->generateInterface(
                 $object,
                 $baseNamespace,
                 $classmap
@@ -464,6 +454,9 @@ GRAPHQL;
             $namespace = $file->addNamespace(
                 $modelNamespace
             );
+            foreach ($imports as $import) {
+                $namespace->addUse($import);
+            }
             $namespace->add($class);
 
             \file_put_contents(
@@ -620,6 +613,7 @@ GRAPHQL;
                     $returnType = $typeInfo['name'];
                     $doc = $typeInfo['name'];
                     break;
+                case 'INTERFACE':
                 case 'OBJECT':
                 case 'UNION':
                 case 'INPUT_OBJECT':
@@ -664,12 +658,33 @@ GRAPHQL;
         return $class;
     }
 
-    private function generateInterface(string $object, string $namespace, array $classmap): ClassType
+    private function generateInterface(string $object, string $namespace, array $classmap): array
     {
+        $imports = [];
+
         $class = new ClassType($object);
         $class->setType(ClassType::TYPE_INTERFACE);
 
-        return $class;
+        $fieldData = $this->introspector->getObject($object);
+        foreach ($fieldData['possibleTypes'] as $possibleType) {
+            $this->interfaces[$possibleType['name']][] = $fieldData['name'];
+        }
+
+        $fields = $fieldData['fields'];
+        if (null !== $fields) {
+            $fields = $this->convertFields($fields);
+
+            // add getters
+            foreach ($fields as $field) {
+                [$method, $import] = $this->generateGetter($classmap, $field);
+                $class->addMember(
+                    $method
+                );
+                $imports = \array_merge($imports, $import);
+            }
+        }
+
+        return [$class, $imports];
     }
 
     private function generateConstructor(array $classmap, array $fields): array

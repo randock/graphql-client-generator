@@ -60,6 +60,10 @@ GRAPHQL;
  __type(name: "%s") {
     name
     kind
+    possibleTypes {
+        name
+        kind
+    }
     fields{
       name
       description
@@ -80,31 +84,6 @@ GRAPHQL;
             }
           }
         }
-    }
-  }
-}
-GRAPHQL;
-
-        $response = $this->graphqlClient->query(
-            \sprintf(
-                $query,
-                $class
-            )
-        );
-
-        return $response->getData()['__type'];
-    }
-
-    public function getUnionOrInterface(string $class)
-    {
-        $query = <<<'GRAPHQL'
-{
- __type(name: "%s") {
-    name
-    kind
-    possibleTypes {
-        name
-        kind
     }
   }
 }
