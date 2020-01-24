@@ -176,7 +176,9 @@ GRAPHQL;
             $graphqlSyntax = [];
             foreach ($args as $arg) {
                 $returnType = \ucfirst($arg['returnType']);
-                if ('Array' === $returnType) {
+                if ('ID' === $arg['kind']) {
+                    $returnType = 'ID';
+                } elseif ('Array' === $returnType) {
                     $returnType = \sprintf(
                         '[%s]',
                         $arg['kind']
