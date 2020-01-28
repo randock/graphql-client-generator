@@ -176,14 +176,15 @@ GRAPHQL;
             $graphqlSyntax = [];
             foreach ($args as $arg) {
                 $returnType = \ucfirst($arg['returnType']);
-                if ('ID' === $arg['kind']) {
-                    $returnType = 'ID';
-                } elseif ('Array' === $returnType) {
+                if ('Array' === $returnType) {
                     $returnType = \sprintf(
                         '[%s]',
                         $arg['kind']
                     );
+                } elseif ('ID' === $arg['kind']) {
+                    $returnType = 'ID';
                 }
+
                 if (!$arg['nullable']) {
                     $returnType .= '!';
                 }
@@ -549,6 +550,7 @@ GRAPHQL;
         $imports = [];
 
         $returnType = $field['returnType'];
+
         if (isset($classmap[$returnType])) {
             $returnType = $classmap[$returnType];
             $imports[] = $returnType;
@@ -561,7 +563,8 @@ GRAPHQL;
             $field['name'],
             $returnType,
             $field['doc'],
-            $field['nullable']
+            $field['nullable'],
+            $field['type']
         );
 
         return [$method, $imports];
@@ -609,6 +612,10 @@ GRAPHQL;
                             $returnType = 'iterable';
                             $doc = 'iterable';
                             break;
+                    }
+                    if ($typeInfo['array']) {
+                        $doc = $returnType . '[]';
+                        $returnType = 'array';
                     }
                     break;
                 case 'ENUM':
@@ -793,10 +800,11 @@ GRAPHQL;
      * @param string $returnType
      * @param string $doc
      * @param bool   $nullable
+     * @param string $type
      *
      * @return Method
      */
-    private function generateGetMethod(string $name, string $returnType, string $doc, bool $nullable): Method
+    private function generateGetMethod(string $name, string $returnType, string $doc, bool $nullable, string $type): Method
     {
         $doc = \sprintf(
             '%s%s',
@@ -840,18 +848,36 @@ CODE;
                 );
                 break;
             default:
-                $body = <<<'CODE'
+
+                if ('ENUM' === $type) {
+                    $body = <<<'CODE'
+$value = $this->_getField('%s', %s);
+if (null !== $value) {
+    $value = new %s($value);
+}
+
+return $value;
+CODE;
+                    $body = \sprintf(
+                        $body,
+                        $name,
+                        ($nullable ? 'true' : 'false'),
+                        $doc
+                    );
+                } else {
+                    $body = <<<'CODE'
 /** @var %s $value */
 $value = $this->_getField('%s', %s);
 
 return $value;
 CODE;
-                $body = \sprintf(
-                    $body,
-                    $doc,
-                    $name,
-                    ($nullable ? 'true' : 'false')
-                );
+                    $body = \sprintf(
+                        $body,
+                        $doc,
+                        $name,
+                        ($nullable ? 'true' : 'false')
+                    );
+                }
                 break;
         }
 
