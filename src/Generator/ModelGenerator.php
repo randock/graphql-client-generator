@@ -864,6 +864,33 @@ CODE;
                         ($nullable ? 'true' : 'false'),
                         $doc
                     );
+                } elseif ('UNION' === $type) {
+                    $body = <<<'CODE'
+/** @var array|null */
+$value = $this->_getField('%s', %s);
+if (null === $value) {
+    return null;
+}
+
+/** @var callable $callable */
+$callable = [
+    __NAMESPACE__ . '\\' . $value['__typename'],
+    'fromArray'
+];
+
+//  return instance of union
+return call_user_func(
+    $callable,
+    $value
+);
+CODE;
+
+                    $body = \sprintf(
+                        $body,
+                        $name,
+                        ($nullable ? 'true' : 'false'),
+                        $doc
+                    );
                 } else {
                     $body = <<<'CODE'
 /** @var %s $value */
