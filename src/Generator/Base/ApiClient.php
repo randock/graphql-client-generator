@@ -102,7 +102,13 @@ abstract class ApiClient
             if (\is_string($value)) {
                 $graphql .= $value;
             } elseif (\is_array($value)) {
-                $graphql .= $key;
+                if ('__' === \substr($key, 0, 2)) {
+                    $graphql .= '... on ' . \substr($key, 2);
+                    $graphql .= '{ __typename ';
+                } else {
+                    $graphql .= $key;
+                    $graphql .= '{';
+                }
                 $graphql .= '{';
                 $graphql .= $this->convertFields($value);
                 $graphql .= '}';
