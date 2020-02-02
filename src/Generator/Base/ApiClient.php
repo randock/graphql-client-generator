@@ -109,7 +109,6 @@ abstract class ApiClient
                     $graphql .= $key;
                     $graphql .= '{';
                 }
-                $graphql .= '{';
                 $graphql .= $this->convertFields($value);
                 $graphql .= '}';
             }
