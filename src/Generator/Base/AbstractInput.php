@@ -21,16 +21,6 @@ class AbstractInput extends AbstractModel
      */
     public function toArray(): array
     {
-        return \array_map(function ($item) {
-            if (\is_object($item)) {
-                if ($item instanceof AbstractEnum) {
-                    return $item->getValue();
-                } elseif ($item instanceof self) {
-                    return $item->toArray();
-                }
-            }
-
-            return $item;
-        }, $this->data);
+        return $this->data;
     }
 }

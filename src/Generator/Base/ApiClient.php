@@ -65,28 +65,25 @@ abstract class ApiClient
     }
 
     /**
-     * @param mixed $input
+     * @param mixed $item
      *
-     * @return array
+     * @return mixed
      */
-    protected function convertInput($input)
+    protected function convertInput($item)
     {
-        $convert = function ($input) {
-            if (\is_object($input) && $input instanceof AbstractInput) {
-                return $input->toArray();
+        if (\is_object($item)) {
+            if ($item instanceof AbstractEnum) {
+                return $item->getValue();
+            } elseif ($item instanceof AbstractInput) {
+                return $this->convertInput(
+                    $item->toArray()
+                );
             }
-
-            return $input;
-        };
-
-        if (\is_array($input)) {
-            return \array_map(
-                $convert,
-                $input
-            );
+        } elseif (\is_array($item)) {
+            return \array_map([$this, 'convertInput'], $item);
         }
 
-        return $convert($input);
+        return $item;
     }
 
     /**
@@ -98,15 +95,32 @@ abstract class ApiClient
     {
         $graphql = '';
         foreach ($fields as $key => $value) {
-            $graphql .= ' ';
             if (\is_string($value)) {
+                $graphql .= ' ';
                 $graphql .= $value;
             } elseif (\is_array($value)) {
+                $graphql .= ' ';
+                if ('__parameters' === $key) {
+                    continue;
+                }
                 if ('__' === \substr($key, 0, 2)) {
                     $graphql .= '... on ' . \substr($key, 2);
                     $graphql .= '{ __typename ';
                 } else {
                     $graphql .= $key;
+                    if (isset($value['__parameters'])) {
+                        $graphql .= '(';
+                        $params = [];
+                        foreach ($value['__parameters'] as $param => $paramValue) {
+                            $params[] = \sprintf(
+                                '%s: %s',
+                                $param,
+                                \is_int($paramValue) ? $paramValue : \json_encode($paramValue)
+                            );
+                        }
+                        $graphql .= \implode(',', $params);
+                        $graphql .= ')';
+                    }
                     $graphql .= '{';
                 }
                 $graphql .= $this->convertFields($value);
