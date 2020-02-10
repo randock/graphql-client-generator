@@ -115,7 +115,7 @@ abstract class ApiClient
                             $params[] = \sprintf(
                                 '%s: %s',
                                 $param,
-                                \is_array($paramValue) || \is_object($paramValue) ? \json_encode($paramValue) : $paramValue
+                                \is_int($paramValue) ? $paramValue : \json_encode($paramValue)
                             );
                         }
                         $graphql .= \implode(',', $params);
