@@ -864,6 +864,22 @@ CODE;
                         ($nullable ? 'true' : 'false'),
                         $doc
                     );
+                } elseif ('SCALAR' === $type && 'object' === $returnType) {
+                    $body = <<<'CODE'
+/** @var %s $value */
+$value = $this->_getField('%s', %s);
+if (null !== $value) {
+    $value = json_decode(json_encode($value));
+}
+
+return $value;
+CODE;
+                    $body = \sprintf(
+                        $body,
+                        $doc,
+                        $name,
+                        ($nullable ? 'true' : 'false')
+                    );
                 } elseif ('UNION' === $type) {
                     $body = <<<'CODE'
 /** @var array|null */

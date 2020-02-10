@@ -671,12 +671,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/randock/build.git",
-                "reference": "fef2744b5bab7304d692988e12d06faf8313c6f1"
+                "reference": "92cfa652d9bdd141ef7feb335eae1a5ea81995cd"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/randock/build/zipball/fef2744b5bab7304d692988e12d06faf8313c6f1",
-                "reference": "fef2744b5bab7304d692988e12d06faf8313c6f1",
+                "url": "https://api.github.com/repos/randock/build/zipball/92cfa652d9bdd141ef7feb335eae1a5ea81995cd",
+                "reference": "92cfa652d9bdd141ef7feb335eae1a5ea81995cd",
                 "shasum": ""
             },
             "type": "library",
@@ -685,7 +685,7 @@
                 "MIT"
             ],
             "description": "Randock Build",
-            "time": "2019-06-11T13:37:05+00:00"
+            "time": "2020-01-21T15:33:05+00:00"
         }
     ],
     "aliases": [],
