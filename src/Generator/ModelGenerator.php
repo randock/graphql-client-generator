@@ -111,45 +111,55 @@ class ModelGenerator
             $method->addParameter('fields')->setType('array');
             $method->addComment('@param array $fields');
 
-            foreach ($args as $arg) {
-                $parameter = $method->addParameter($arg['name']);
+            if (\count($args)) {
+                foreach ($args as $arg) {
+                    $parameter = $method->addParameter($arg['name']);
 
-                if ('array' === $arg['returnType'] && true === $arg['nullable']) {
-                    $parameter->setDefaultValue([]);
-                } else {
-                    $parameter->setNullable($arg['nullable']);
+                    if ('array' === $arg['returnType'] && true === $arg['nullable']) {
+                        $parameter->setDefaultValue([]);
+                    } else {
+                        $parameter->setNullable($arg['nullable']);
+                    }
+
+                    $parameter->setType(
+                        $classmap[$arg['returnType']] ?? $arg['returnType']
+                    );
+
+                    $method->addComment(
+                        \sprintf(
+                            '@param %s $%s',
+                            $arg['doc'],
+                            $arg['name']
+                        )
+                    );
+
+                    // import
+                    if (isset($classmap[$arg['kind']])) {
+                        $imports[] = $classmap[$arg['kind']];
+                    }
                 }
-
-                $parameter->setType(
-                    $classmap[$arg['returnType']] ?? $arg['returnType']
-                );
-
-                $method->addComment(
-                    \sprintf(
-                        '@param %s $%s',
-                        $arg['doc'],
-                        $arg['name']
-                    )
-                );
-
-                // import
-                if (isset($classmap[$arg['kind']])) {
-                    $imports[] = $classmap[$arg['kind']];
-                }
-            }
-
-            $method->addComment('');
-            $method->addComment('@return ' . $convertedField['doc']);
-            $method->setVisibility('public');
-
-            // body
-            $body = <<<'GRAPHQL'
+                // body
+                $body = <<<'GRAPHQL'
 query %1$s(%2$s){
     %1$s(%3$s) {
         %4$s
     }
 }
 GRAPHQL;
+            } else {
+                // body
+                $body = <<<'GRAPHQL'
+query %1$s{
+    %1$s {
+        %4$s
+    }
+}
+GRAPHQL;
+            }
+
+            $method->addComment('');
+            $method->addComment('@return ' . $convertedField['doc']);
+            $method->setVisibility('public');
 
             $return = \sprintf(
                 '$data = $response->getData()[\'%s\'];',
