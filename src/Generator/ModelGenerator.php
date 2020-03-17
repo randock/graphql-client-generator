@@ -111,7 +111,7 @@ class ModelGenerator
             $method->addParameter('fields')->setType('array');
             $method->addComment('@param array $fields');
 
-            if (\count($args)) {
+            if (\count($args) > 0) {
                 foreach ($args as $arg) {
                     $parameter = $method->addParameter($arg['name']);
 
