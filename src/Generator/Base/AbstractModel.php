@@ -16,11 +16,11 @@ class AbstractModel
     /**
      * Order constructor.
      *
-     * @param array $data
+     * @param array|null $data
      */
-    protected function __construct(array $data)
+    protected function __construct(?array $data)
     {
-        $this->data = $data;
+        $this->data = null !== $data ? $data : [];
     }
 
     /**
