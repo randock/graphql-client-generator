@@ -752,7 +752,7 @@ GRAPHQL;
         $method->setVisibility('public');
         $method->setReturnType('self');
         $method->addComment(
-            '@param array $data'
+            '@param array|null $data'
         );
         $method->addComment('');
         $method->addComment(
@@ -761,7 +761,7 @@ GRAPHQL;
 
         $method->setParameters(
             [
-                (new Parameter('data'))->setType('array'),
+                (new Parameter('data'))->setType('array')->setNullable(true),
             ]
         );
 
