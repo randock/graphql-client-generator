@@ -118,6 +118,7 @@ class ModelGenerator
                     $parameter->setDefaultValue([]);
                 } else {
                     $parameter->setNullable($arg['nullable']);
+                    $parameter->setDefaultValue(null);
                 }
 
                 $parameter->setType(
