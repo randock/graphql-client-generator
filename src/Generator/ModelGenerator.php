@@ -114,11 +114,15 @@ class ModelGenerator
             foreach ($args as $arg) {
                 $parameter = $method->addParameter($arg['name']);
 
-                if ('array' === $arg['returnType'] && true === $arg['nullable']) {
-                    $parameter->setDefaultValue([]);
-                } else {
-                    $parameter->setNullable($arg['nullable']);
-                    $parameter->setDefaultValue(null);
+                if(true === $arg['nullable']){
+
+                    $parameter->setNullable(true);
+
+                    if ('array' === $arg['returnType']) {
+                        $parameter->setDefaultValue([]);
+                    } else{
+                        $parameter->setDefaultValue(null);
+                    }
                 }
 
                 $parameter->setType(
