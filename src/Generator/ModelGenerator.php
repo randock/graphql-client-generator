@@ -115,31 +115,41 @@ class ModelGenerator
                 foreach ($args as $arg) {
                     $parameter = $method->addParameter($arg['name']);
 
-                    if ('array' === $arg['returnType'] && true === $arg['nullable']) {
+                if(true === $arg['nullable']){
+
+                    $parameter->setNullable(true);
+
+                    if ('array' === $arg['returnType']) {
                         $parameter->setDefaultValue([]);
-                    } else {
-                        $parameter->setNullable($arg['nullable']);
-                    }
-
-                    $parameter->setType(
-                        $classmap[$arg['returnType']] ?? $arg['returnType']
-                    );
-
-                    $method->addComment(
-                        \sprintf(
-                            '@param %s $%s',
-                            $arg['doc'],
-                            $arg['name']
-                        )
-                    );
-
-                    // import
-                    if (isset($classmap[$arg['kind']])) {
-                        $imports[] = $classmap[$arg['kind']];
+                    } else{
+                        $parameter->setDefaultValue(null);
                     }
                 }
-                // body
-                $body = <<<'GRAPHQL'
+
+                $parameter->setType(
+                    $classmap[$arg['returnType']] ?? $arg['returnType']
+                );
+
+                $method->addComment(
+                    \sprintf(
+                        '@param %s $%s',
+                        $arg['doc'],
+                        $arg['name']
+                    )
+                );
+
+                // import
+                if (isset($classmap[$arg['kind']])) {
+                    $imports[] = $classmap[$arg['kind']];
+                }
+            }
+
+            $method->addComment('');
+            $method->addComment('@return ' . $convertedField['doc']);
+            $method->setVisibility('public');
+
+            // body
+            $body = <<<'GRAPHQL'
 query %1$s(%2$s){
     %1$s(%3$s) {
         %4$s
