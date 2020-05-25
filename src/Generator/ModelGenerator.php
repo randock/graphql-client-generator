@@ -48,7 +48,7 @@ class ModelGenerator
     {
         $classmap = $this->getClassmap($namespace);
 
-        $this->generateQuery($namespace, $classmap, $baseDir);
+        $this->generateClient($namespace, $classmap, $baseDir);
 
         $this->generateUnions($namespace, $classmap, $baseDir);
         $this->generateInterfaces($namespace, $classmap, $baseDir);
@@ -82,165 +82,173 @@ class ModelGenerator
         ];
     }
 
-    private function generateQuery(string $baseNamespace, array $classmap, string $baseDir)
+    private function generateClient(string $baseNamespace, array $classmap, string $baseDir)
     {
-        $imports = [];
-
-        $query = $this->introspector->getQuery();
-
         $class = new ClassType('ApiClient');
         $class->addExtend(ApiClient::class);
 
-        foreach ($query['fields'] as $field) {
-            [$convertedField] = $parsed = $this->convertFields([$field]);
+        $imports = [];
 
-            // import
-            if (isset($classmap[$convertedField['kind']])) {
-                $imports[] = $classmap[$convertedField['kind']];
-            }
+        foreach (['query', 'mutation'] as $type) {
+            $query = $this->introspector->getQuery($type);
 
-            // create method
-            $method = new Method($convertedField['name']);
-            $method->setReturnType(
-                $classmap[$convertedField['returnType']] ?? $convertedField['returnType']
-            );
-
-            $args = $this->convertFields($field['args']);
-
-            // add fields argument
-            $method->addParameter('fields')->setType('array');
-            $method->addComment('@param array $fields');
-
-            foreach ($args as $arg) {
-                $parameter = $method->addParameter($arg['name']);
-
-                if(true === $arg['nullable']){
-
-                    $parameter->setNullable(true);
-
-                    if ('array' === $arg['returnType']) {
-                        $parameter->setDefaultValue([]);
-                    } else{
-                        $parameter->setDefaultValue(null);
-                    }
-                }
-
-                $parameter->setType(
-                    $classmap[$arg['returnType']] ?? $arg['returnType']
-                );
-
-                $method->addComment(
-                    \sprintf(
-                        '@param %s $%s',
-                        $arg['doc'],
-                        $arg['name']
-                    )
-                );
+            foreach ($query['fields'] as $field) {
+                [$convertedField] = $parsed = $this->convertFields([$field]);
 
                 // import
-                if (isset($classmap[$arg['kind']])) {
-                    $imports[] = $classmap[$arg['kind']];
+                if (isset($classmap[$convertedField['kind']])) {
+                    $imports[] = $classmap[$convertedField['kind']];
                 }
-            }
 
-            $method->addComment('');
-            $method->addComment('@return ' . $convertedField['doc']);
-            $method->setVisibility('public');
+                // create method
+                $method = new Method($convertedField['name']);
+                $method->setReturnType(
+                    $classmap[$convertedField['returnType']] ?? $convertedField['returnType']
+                );
 
-            // body
-            $body = <<<'GRAPHQL'
-query %1$s(%2$s){
+                $args = $this->convertFields($field['args']);
+
+                // add fields argument
+                $method->addParameter('fields')->setType('array');
+                $method->addComment('@param array $fields');
+
+                if (\count($args) > 0) {
+                    foreach ($args as $arg) {
+                        $parameter = $method->addParameter($arg['name']);
+
+                        if ('array' === $arg['returnType'] && true === $arg['nullable']) {
+                            $parameter->setDefaultValue([]);
+                        } else {
+                            $parameter->setNullable($arg['nullable']);
+                        }
+
+                        $parameter->setType(
+                            $classmap[$arg['returnType']] ?? $arg['returnType']
+                        );
+
+                        $method->addComment(
+                            \sprintf(
+                                '@param %s $%s',
+                                $arg['doc'],
+                                $arg['name']
+                            )
+                        );
+
+                        // import
+                        if (isset($classmap[$arg['kind']])) {
+                            $imports[] = $classmap[$arg['kind']];
+                        }
+                    }
+                    // body
+                    $body = <<<'GRAPHQL'
+%5$s %1$s(%2$s){
     %1$s(%3$s) {
         %4$s
     }
 }
 GRAPHQL;
+                } else {
+                    // body
+                    $body = <<<'GRAPHQL'
+%5$s %1$s{
+    %1$s {
+        %4$s
+    }
+}
+GRAPHQL;
+                }
 
-            $return = \sprintf(
-                '$data = $response->getData()[\'%s\'];',
-                $convertedField['name']
-            );
+                $method->addComment('');
+                $method->addComment('@return ' . $convertedField['doc']);
+                $method->setVisibility('public');
 
-            if ('array' === $convertedField['returnType']) {
-                $return .= \sprintf(
-                    "\n\n" .
-                    'return array_map(function(array $item) {' . "\n"
-                    . "\t" . 'return %s::fromArray($item);' . "\n"
-                    . '}, $data);',
-                    $convertedField['kind']
+                $return = \sprintf(
+                    '$data = $response->getData()[\'%s\'];',
+                    $convertedField['name']
                 );
-            } elseif ('OBJECT' === $convertedField['type']) {
-                $return .= \sprintf(
-                    "\n\n" . 'return %s::fromArray($data);',
-                    $convertedField['kind']
-                );
-            } else {
-                $return .= "\n\n" . 'return $data;';
-            }
 
-            $graphqlSyntax = [];
-            foreach ($args as $arg) {
-                $returnType = \ucfirst($arg['returnType']);
-                if ('Array' === $returnType) {
-                    $returnType = \sprintf(
-                        '[%s]',
-                        $arg['kind']
+                if ('array' === $convertedField['returnType']) {
+                    $return .= \sprintf(
+                        "\n\n" .
+                        'return array_map(function(array $item) {' . "\n"
+                        . "\t" . 'return %s::fromArray($item);' . "\n"
+                        . '}, $data);',
+                        $convertedField['kind']
                     );
-                } elseif ('ID' === $arg['kind']) {
-                    $returnType = 'ID';
+                } elseif ('OBJECT' === $convertedField['type']) {
+                    $return .= \sprintf(
+                        "\n\n" . 'return %s::fromArray($data);',
+                        $convertedField['kind']
+                    );
+                } else {
+                    $return .= "\n\n" . 'return $data;';
                 }
 
-                if (!$arg['nullable']) {
-                    $returnType .= '!';
+                $graphqlSyntax = [];
+                foreach ($args as $arg) {
+                    $returnType = \ucfirst($arg['returnType']);
+                    if ('Array' === $returnType) {
+                        $returnType = \sprintf(
+                            '[%s]',
+                            $arg['kind']
+                        );
+                    } elseif ('ID' === $arg['kind']) {
+                        $returnType = 'ID';
+                    }
+
+                    if (!$arg['nullable']) {
+                        $returnType .= '!';
+                    }
+                    $graphqlSyntax[$arg['name']] = $returnType;
                 }
-                $graphqlSyntax[$arg['name']] = $returnType;
-            }
 
-            $variables = '';
-            $graphqlVariablesMethod = '';
-            $graphqlVariablesCall = '';
+                $variables = '';
+                $graphqlVariablesMethod = '';
+                $graphqlVariablesCall = '';
 
-            foreach ($args as $arg) {
-                $variables .= \sprintf(
-                    ', \'%1$s\' => $this->convertInput($%1$s)',
-                    $arg['name']
-                );
+                foreach ($args as $arg) {
+                    $variables .= \sprintf(
+                        ', \'%1$s\' => $this->convertInput($%1$s)',
+                        $arg['name']
+                    );
 
-                $graphqlVariablesMethod .= \sprintf(
-                    ', $%s: %s',
-                    $arg['name'],
-                    $graphqlSyntax[$arg['name']]
-                );
+                    $graphqlVariablesMethod .= \sprintf(
+                        ', $%s: %s',
+                        $arg['name'],
+                        $graphqlSyntax[$arg['name']]
+                    );
 
-                $graphqlVariablesCall .= \sprintf(
-                    ', %1$s: $%1$s',
-                    $arg['name']
-                );
-            }
-            $variables = \substr($variables, 2);
-            $graphqlVariablesMethod = \substr($graphqlVariablesMethod, 2);
-            $graphqlVariablesCall = \substr($graphqlVariablesCall, 2);
+                    $graphqlVariablesCall .= \sprintf(
+                        ', %1$s: $%1$s',
+                        $arg['name']
+                    );
+                }
+                $variables = \substr($variables, 2);
+                $graphqlVariablesMethod = \substr($graphqlVariablesMethod, 2);
+                $graphqlVariablesCall = \substr($graphqlVariablesCall, 2);
 
-            $method->addBody(
-                \sprintf(
+                $method->addBody(
                     \sprintf(
-                        '$query = \'%s\';' . "\n\n"
-                        . '$response = $this->query(' . "\n\t" . 'sprintf($query, $this->convertFields($fields)),' . "\n\t" . '[%s]' . "\n" . ');' . "\n"
-                        . '%s',
-                        $body,
-                        $variables,
-                        $return
-                    ),
-                    $convertedField['name'],
-                    $graphqlVariablesMethod,
-                    $graphqlVariablesCall,
-                    '%s'
-                )
-            );
+                        \sprintf(
+                            '$query = \'%s\';' . "\n\n"
+                            . '$response = $this->query(' . "\n\t" . 'sprintf($query, $this->convertFields($fields)),' . "\n\t"
+                            . '[%s]' . "\n" . ');' . "\n"
+                            . '%s',
+                            $body,
+                            $variables,
+                            $return
+                        ),
+                        $convertedField['name'],
+                        $graphqlVariablesMethod,
+                        $graphqlVariablesCall,
+                        '%s',
+                        $type
+                    )
+                );
 
-            $class->addMember($method);
+                $class->addMember($method);
+            }
         }
-
         $file = new PhpFile();
         $file->setStrictTypes(true);
 
