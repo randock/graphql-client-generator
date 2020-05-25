@@ -45,7 +45,7 @@ GRAPHQL;
 
         $objects = [];
         foreach ($response->getData()['__schema']['types'] as $object) {
-            if ($kind === $object['kind'] && !\preg_match('/^\_\_/', $object['name']) && 'Query' !== $object['name']) {
+            if ($kind === $object['kind'] && !\preg_match('/^\_\_/', $object['name']) && 'Query' !== $object['name'] && 'Mutation' !== $object['name']) {
                 $objects[] = $object['name'];
             }
         }
@@ -177,12 +177,13 @@ GRAPHQL;
         return $response->getData()['__type'];
     }
 
-    public function getQuery()
+    public function getQuery(string $type)
     {
+        $type .= 'Type';
         $schemaQuery = <<<'GRAPHQL'
 {
   __schema {
-    queryType {
+    %s {
       name
       kind
       description
@@ -235,9 +236,12 @@ GRAPHQL;
 GRAPHQL;
 
         $response = $this->graphqlClient->query(
-            $schemaQuery
+            \sprintf(
+                $schemaQuery,
+                $type
+            )
         );
 
-        return $response->getData()['__schema']['queryType'];
+        return $response->getData()['__schema'][$type];
     }
 }
