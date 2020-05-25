@@ -24,6 +24,23 @@ class AbstractModel
     }
 
     /**
+     * @return array
+     */
+    public function toArray()
+    {
+        $arrayValue = [];
+        foreach ($this->data as $key => $value) {
+            if (\is_array($value)) {
+                array_walk($value, function (self &$item) { $item = $item->toArray(); });
+            }
+
+            $arrayValue[$key] = $value;
+        }
+
+        return $arrayValue;
+    }
+
+    /**
      * @param string $field
      * @param bool   $nullable
      *
