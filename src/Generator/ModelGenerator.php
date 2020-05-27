@@ -183,7 +183,22 @@ GRAPHQL;
                         "\n\n" . 'return %s::fromArray($data);',
                         $convertedField['kind']
                     );
-                } else {
+                }
+                elseif ('UNION' === $convertedField['type']) {
+                    $return .= <<<'CODE'
+
+    /** @var callable $callable */
+    $callable = [
+        __NAMESPACE__ . '\\Object\\Model\\' . $data['__typename'],
+        'fromArray'
+    ];
+    return call_user_func(
+        $callable,
+        $data
+    );
+CODE;
+                }
+                else {
                     $return .= "\n\n" . 'return $data;';
                 }
 
