@@ -894,7 +894,13 @@ CODE;
                         $body,
                         $name,
                         ($nullable ? 'true' : 'false'),
-                        (new \ReflectionClass($returnType))->getShortName()
+                        \substr(
+                            $returnType,
+                            \strrpos(
+                                $returnType,
+                                '\\'
+                            ) + 1
+                        )
                     );
                 } elseif ('SCALAR' === $type && 'object' === $returnType) {
                     $body = <<<'CODE'
