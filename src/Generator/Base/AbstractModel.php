@@ -31,7 +31,7 @@ class AbstractModel
         $arrayValue = [];
         foreach ($this->data as $key => $value) {
             if (\is_array($value)) {
-                array_walk($value, function (self &$item) {
+                \array_walk($value, function (self &$item) {
                     $item = $item->toArray();
                 });
             }

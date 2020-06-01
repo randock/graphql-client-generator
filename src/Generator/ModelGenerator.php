@@ -183,8 +183,7 @@ GRAPHQL;
                         "\n\n" . 'return %s::fromArray($data);',
                         $convertedField['kind']
                     );
-                }
-                elseif ('UNION' === $convertedField['type']) {
+                } elseif ('UNION' === $convertedField['type']) {
                     $return .= <<<'CODE'
 
     /** @var callable $callable */
@@ -197,15 +196,14 @@ GRAPHQL;
         $data
     );
 CODE;
-                }
-                else {
+                } else {
                     $return .= "\n\n" . 'return $data;';
                 }
 
                 $graphqlSyntax = [];
                 foreach ($args as $arg) {
-                    $returnType = \ucfirst($arg['returnType']);
-                    if ('Array' === $returnType) {
+                    $returnType = $arg['returnType'];
+                    if ('array' === $returnType) {
                         $returnType = \sprintf(
                             '[%s]',
                             $arg['kind']
@@ -233,7 +231,7 @@ CODE;
                     $graphqlVariablesMethod .= \sprintf(
                         ', $%s: %s',
                         $arg['name'],
-                        $graphqlSyntax[$arg['name']]
+                        $arg['kind']
                     );
 
                     $graphqlVariablesCall .= \sprintf(
@@ -636,6 +634,7 @@ CODE;
                             $doc = 'bool';
                             break;
                         case 'JSONObject':
+                        case 'JSON':
                             $returnType = 'object';
                             $doc = 'object';
                             break;
@@ -734,7 +733,7 @@ CODE;
         $method = new Method(
             '__construct'
         );
-        $body = '$data = [];';
+        $body = '$__data = [];';
 
         $parameters = [];
         foreach ($fields as $field) {
@@ -750,12 +749,12 @@ CODE;
             $parameters[] = $parameter;
 
             $body .= \sprintf(
-                "\n" . '$data[\'%1$s\'] = $%1$s;',
+                "\n" . '$__data[\'%1$s\'] = $%1$s;',
                 $field['name']
             );
         }
 
-        $body .= "\n\n" . 'parent::__construct($data);';
+        $body .= "\n\n" . 'parent::__construct($__data);';
 
         $method->setVisibility('public')->setParameters(
             $parameters
@@ -893,7 +892,7 @@ CODE;
                         $body,
                         $name,
                         ($nullable ? 'true' : 'false'),
-                        $doc
+                        (new \ReflectionClass($returnType))->getShortName()
                     );
                 } elseif ('SCALAR' === $type && 'object' === $returnType) {
                     $body = <<<'CODE'
