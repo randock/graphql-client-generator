@@ -210,6 +210,8 @@ CODE;
                         );
                     } elseif ('ID' === $arg['kind']) {
                         $returnType = 'ID';
+                    } else {
+                        $returnType = $arg['kind'];
                     }
 
                     if (!$arg['nullable']) {
@@ -231,7 +233,7 @@ CODE;
                     $graphqlVariablesMethod .= \sprintf(
                         ', $%s: %s',
                         $arg['name'],
-                        $arg['kind']
+                        $graphqlSyntax[$arg['name']]
                     );
 
                     $graphqlVariablesCall .= \sprintf(
