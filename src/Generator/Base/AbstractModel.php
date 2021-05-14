@@ -31,12 +31,18 @@ class AbstractModel
         $arrayValue = [];
         foreach ($this->data as $key => $value) {
             if (\is_array($value)) {
-                \array_walk($value, function (self &$item) {
-                    $item = $item->toArray();
+                \array_walk($value, function (&$item) {
+                    if (method_exists($item, 'toArray')) {
+                        $item = $item->toArray();
+                    }
                 });
             }
 
-            $arrayValue[$key] = $value;
+            if (method_exists($value, 'toArray')) {
+                $arrayValue[$key] = $value->toArray();
+            } else {
+                $arrayValue[$key] = $value;
+            }
         }
 
         return $arrayValue;
